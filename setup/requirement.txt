@@ -1,2 +1,7 @@
 flask
 azure-cognitiveservices-speech
+psycopg2-binary
+blinker
+flask_sqlalchemy
+pandas
+
