@@ -17,15 +17,17 @@ class NameSpeech(db.Model):
     last_name = db.Column("last_name",db.String)
     short_name = db.Column("short_name",String)
     voice_path = db.Column("voice_path",String)
+    custom_voice_path=  db.Column("custom_voice_path",String)
     created_timestamp = db.Column("created_timestamp",DateTime(timezone=False), default=func.now())
 
-    def __init__(self, userID, firstName,lastName,shortName,voicePath,created):
+    def __init__(self, userID, firstName,lastName,shortName,voicePath,created,custVoicePath):
         self.user_id = userID
         self.first_name = firstName
         self.last_name = lastName
         self.short_name = shortName
         self.voice_path = voicePath
         self.created_timestamp = created
+        self.custom_voice_path= custVoicePath
 
     def __repr__(self):
         return f"<Item {self.userID}>"
@@ -35,5 +37,5 @@ class NameSpeech(db.Model):
         """
         Return item in serializeable format
         """
-        return {"sid": self.user_id, "firstName": self.first_name, "lastName": self.last_name,"shortName":self.short_name,"voicePath":self.voice_path,"created_time":self.created_timestamp}
+        return {"sid": self.user_id, "firstName": self.first_name, "lastName": self.last_name,"shortName":self.short_name,"voicePath":self.voice_path,"custom_voice_path":self.custom_voice_path,"created_time":self.created_timestamp}
 
