@@ -1,10 +1,13 @@
+import platform
+
 from flask import request,make_response,Flask,jsonify,appcontext_tearing_down,request_started
 
 from flask_sqlalchemy import SQLAlchemy
+import platform
 
 subscription_key = 'c8e3d272c8a14b4a9b59c3fe18257c89'
 default_region = 'eastus'
-audio_filePath = 'D:/Sujit/hackathon/'
+audio_filePath = '/home/site/wwwroot/' if platform.system() != 'Windows' else 'D:/Sujit/hackathon/'
 app= Flask(__name__)
 app.config[
     "SQLALCHEMY_DATABASE_URI"

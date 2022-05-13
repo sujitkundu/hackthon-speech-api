@@ -28,6 +28,8 @@ import os
 import json
 from flask import abort, Response
 
+
+
 #DB_URL="host=20.127.242.100 port=5433 dbname=yugabyte user=yugabyte password=Hackathon22!"
 #insert_sql= "INSERT INTO name_pronunciation_details (user_id, first_name, last_name, short_name,voice_path,created_timestamp) VALUES (%s, %s, %s, %s,%s,CURRENT_TIMESTAMP)";
 #migrate = Migrate(app, db)
@@ -39,7 +41,13 @@ from sqlalchemy import MetaData
 
 #Base.metadata.create_all(engine_nf)
 
+audio_filePath = '/home/site/wwwroot/' if platform.system() != 'Windows' else 'D:/Sujit/hackathon/'
+
 app.config['UPLOAD_FOLDER'] = audio_filePath
+
+@app.route('/ping')
+def index():
+    return "Speech api is running"
 
 def audio_path(file_name):
     full_path= audio_filePath+file_name
