@@ -24,7 +24,7 @@ import traceback
 import socket
 from flask import send_file
 import os
-
+import gunicorn
 import json
 from flask import abort, Response
 
@@ -45,6 +45,9 @@ audio_filePath = '/home/site/wwwroot/' if platform.system() != 'Windows' else 'D
 
 app.config['UPLOAD_FOLDER'] = audio_filePath
 default_port=8000
+
+print(audio_filePath)
+print(socket.gethostname())
 
 @app.route('/ping')
 def index():
@@ -206,8 +209,16 @@ def download_audio():
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     print('Starting speech api service..')
-    if os.path.exists(audio_filePath):
-        app.run(host="0.0.0.0", port=default_port, debug=True)
+    if platform.system() != 'Windows':
+        print('Starting speech api service..on azure')
+        app.run()
     else:
-        print("The audio file path "+audio_filePath +" does not exist. Change the config path or create the same structure.")
+        print('Starting speech api service..on local')
+        app.run(host="0.0.0.0", port=default_port, debug=True)
+
+    # if os.path.exists(audio_filePath):
+    #     app.run(host="0.0.0.0", port=default_port, debug=True)
+    # else:
+    #     print("The audio file path "+audio_filePath +" does not exist. Change the config path or create the same structure.")
+
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

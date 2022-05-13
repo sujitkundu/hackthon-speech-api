@@ -1,0 +1,8 @@
+flask
+azure-cognitiveservices-speech
+psycopg2-binary
+flask_sqlalchemy
+pandas
+flask-cors
+gunicorn
+
