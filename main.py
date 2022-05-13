@@ -20,14 +20,18 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 import datetime
 from sqlalchemy.sql import func
+from sqlalchemy import or_
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+import traceback
 
 #DB_URL="host=20.127.242.100 port=5433 dbname=yugabyte user=yugabyte password=Hackathon22!"
 #insert_sql= "INSERT INTO name_pronunciation_details (user_id, first_name, last_name, short_name,voice_path,created_timestamp) VALUES (%s, %s, %s, %s,%s,CURRENT_TIMESTAMP)";
 #migrate = Migrate(app, db)
 from sqlalchemy import create_engine
 from sqlalchemy import MetaData
-engine_nf = create_engine(
-    'postgresql://yugabyte:Hackathon22!@20.127.242.100:5433/yugabyte')
+#engine_nf = create_engine('postgresql://yugabyte:Hackathon22!@20.127.242.100:5433/yugabyte')
 #sql_read = lambda sql: pd.read_sql(sql, engine_nf)
 #sql_execute = lambda sql: pd.io.sql.execute(sql, engine_nf)
 
@@ -40,6 +44,9 @@ def default_speech():  # sid, text, lang='en-US', gender='M'
     content= request.get_json(silent=True)
     # content = request.json
     sid = content['sid']
+    f_name = content['firstName']
+    l_name = content['lastName']
+    s_name = content['shortName']
     print(sid)
     text = content['text']
     iso_country = content['iso_country']
@@ -75,13 +82,12 @@ def default_speech():  # sid, text, lang='en-US', gender='M'
         callback = {"result": 'success', "callback_url": audio_callback_path}
         data_insert = NameSpeech(
             userID=sid,
-            firstName=text,
-            lastName=text,
-            shortName=text,
+            firstName=f_name,
+            lastName=l_name,
+            shortName=s_name,
             voicePath=audio_callback_path,
             created=func.now(),
         )
-        #Session = sessionmaker(bind=engine_nf)
 
         db.session.add(data_insert)
         db.session.commit()
@@ -103,14 +109,13 @@ def default_speech():  # sid, text, lang='en-US', gender='M'
 
     print("Callback URL: " + audio_callback_path)
     json_summary = jsonify(callback)
-    response = make_response(json_summary, 200)
+    response = make_response(json_summary,201)
     return response
 
-
-@app.route('/speech/voice', methods=['POST'])
-def record_speech(sid, text, audio_file_path):
+@app.route('/speech/update',methods=['POST'])
+def record_speech(sid, text,audio_file_path):
     # Add validation
-    content = request.get_json(silent=True)
+    content = request.get_json()
     sid = content['sid']
     print(sid)
     text = content['text']
@@ -120,10 +125,44 @@ def record_speech(sid, text, audio_file_path):
     audio_callback_path = audio_file_path  # audio_filePath + sid + "-def-file.wav";
 
     callback = {"callback_url": audio_callback_path}
-
+    data_update = NameSpeech(
+        userID=sid,
+        voicePath=audio_callback_path,
+        created=func.now(),
+    )
     json_summary = jsonify(callback)
-    response = make_response(json_summary, 200)
+    response = make_response(json_summary, 201)
     return response
+
+
+@app.route("/search/profiles", methods=["GET"])
+def view_all_profiles():
+    if request.method == "GET":
+        items = NameSpeech.query.all()
+        return jsonify([item.serialize for item in items])
+    else:
+        return {"message": "failure"}
+
+
+@app.route("/search/profiles/<text>", methods=["GET"])
+def search_profile(text):
+    if request.method == "GET":
+        try:
+            #item = NameSpeech.query.filter_by(user_id=text).first_or_404()
+            search = "%{}%".format(text)
+            #items = NameSpeech.query.filter(NameSpeech.user_id.ilike('%' + text + '%')).all()
+
+            # '%' attention to spaces
+            #query_sql = """SELECT * FROM table WHERE user_id LIKE '%' :text '%' or first_name LIKE '%' :text '%' """
+            # db is sqlalchemy session object
+            #items = db.session.execute(text(query_sql), {"text": text}).fetchall()
+            items = db.session.query(NameSpeech).filter(or_(NameSpeech.first_name.like(search), NameSpeech.user_id.like(search)))
+            return jsonify([item.serialize for item in items])
+        except:
+            traceback.print_exc()
+            return jsonify({"error": f"Item {text} not found"})
+    else:
+        return {"message": "Request method not implemented"}
 
 
 # Press the green button in the gutter to run the script.

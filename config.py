@@ -11,4 +11,5 @@ app.config[
     "SQLALCHEMY_DATABASE_URI"
 ] = f"postgresql://yugabyte:Hackathon22!@20.127.242.100:5433/yugabyte"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config['SQLALCHEMY_ECHO'] = True
 db = SQLAlchemy(app)
