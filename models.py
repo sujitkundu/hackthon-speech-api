@@ -35,4 +35,5 @@ class NameSpeech(db.Model):
         """
         Return item in serializeable format
         """
-        return {"userID": self.userID, "firstName": self.firstName}
+        return {"sid": self.user_id, "firstName": self.first_name, "lastName": self.last_name,"shortName":self.short_name,"voicePath":self.voice_path,"created_time":self.created_timestamp}
+
