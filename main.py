@@ -2,11 +2,10 @@
 
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import base64
 
-from src.phonetics import *
 import azure.cognitiveservices.speech as speechsdk
 from flask import g
-from waitress import serve
 #from flask import request,make_response,Flask,jsonify,appcontext_tearing_down,request_started
 import psycopg2
 import asyncio
@@ -25,6 +24,9 @@ import logging
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 import traceback
+import socket
+from flask import send_file
+import os
 
 #DB_URL="host=20.127.242.100 port=5433 dbname=yugabyte user=yugabyte password=Hackathon22!"
 #insert_sql= "INSERT INTO name_pronunciation_details (user_id, first_name, last_name, short_name,voice_path,created_timestamp) VALUES (%s, %s, %s, %s,%s,CURRENT_TIMESTAMP)";
@@ -35,14 +37,21 @@ from sqlalchemy import MetaData
 #sql_read = lambda sql: pd.read_sql(sql, engine_nf)
 #sql_execute = lambda sql: pd.io.sql.execute(sql, engine_nf)
 
-# Base.metadata.create_all(engine_nf)
+#Base.metadata.create_all(engine_nf)
 
 
-@app.route('/speech/default', methods=['POST'])
-def default_speech():  # sid, text, lang='en-US', gender='M'
-    # Add validation
-    content= request.get_json(silent=True)
-    # content = request.json
+def audio_path(file_name):
+    full_path= audio_filePath+file_name
+
+    sample_string_bytes = full_path.encode("ascii")
+    base64_bytes = base64.b64encode(sample_string_bytes)
+    base64_string = base64_bytes.decode("ascii")
+    return "http://"+socket.gethostname()+":8080/download/audio?q="+base64_string;
+
+@app.route('/speech/create',methods=['POST'])
+def default_speech():#sid, text, lang='en-US', gender='M'
+    #Add validation
+    content= request.get_json()
     sid = content['sid']
     f_name = content['firstName']
     l_name = content['lastName']
@@ -53,61 +62,57 @@ def default_speech():  # sid, text, lang='en-US', gender='M'
     iso_country = "US" if not content['iso_country'] else content['iso_country']
     lang = 'en' if not content['lang'] else content['lang']
     gender = 'M' if content['gender'] is None else content['gender']
-    speech_config = speechsdk.SpeechConfig(
-        subscription=subscription_key, region=default_region)
+    speech_config = speechsdk.SpeechConfig(subscription=subscription_key, region=default_region)
     default_voice_M = 'JasonNeural'
 
     #audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
-    audio_callback_path = audio_filePath+sid+"-def-file.wav"
-    audio_config = speechsdk.audio.AudioOutputConfig(
-        filename=audio_callback_path)
+    file_name = sid+"-def-file.wav";
+    audio_callback_path=audio_filePath+file_name;
+    audio_config = speechsdk.audio.AudioOutputConfig(filename=audio_callback_path)
 
     # The language of the voice that speaks.
-    speaker = default_voice_M if gender == 'M' else 'NancyNeural'
-    speech_config.speech_synthesis_voice_name = lang + \
-        "-" + iso_country + '-' + speaker
+    speaker = default_voice_M if gender=='M' else 'NancyNeural'
+    speech_config.speech_synthesis_voice_name = lang+ "-" + iso_country + '-' + speaker
 
-    speech_synthesizer = speechsdk.SpeechSynthesizer(
-        speech_config=speech_config, audio_config=audio_config)
+    speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
 
     # Get text from the console and synthesize to the default speaker.
     #print("Enter some text that you want to speak >")
     #text = input(name)
 
     speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
-    phonetic = get_phonetic(text)
-    callback = {"result": '', "callback_url": '', "phonetics": phonetic}
+    callback = {"result": '', "callback_url": ''}
     if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
         print("Speech synthesized for text [{}]".format(text))
-        callback = {"result": 'success', "callback_url": audio_callback_path}
+
         data_insert = NameSpeech(
             userID=sid,
             firstName=f_name,
             lastName=l_name,
             shortName=s_name,
-            voicePath=audio_callback_path,
+            voicePath=audio_path(file_name),
             created=func.now(),
+            custVoicePath=audio_path(file_name),
         )
 
         db.session.add(data_insert)
         db.session.commit()
+        callback = {"result": 'success', "callback_url": audio_path(file_name), "sid":sid, "firstName": f_name, "lastName": l_name, "shortName":s_name, "custVoicePath":audio_path(file_name)}
         print('Saved to DB')
     elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
 
         cancellation_details = speech_synthesis_result.cancellation_details
-        callback = {"result": cancellation_details.error_details,
-                    "callback_url": ''
+        callback = {"result": cancellation_details.error_details ,
+                    "callback_url":''
                     }
 
-        print("Speech synthesis canceled: {}".format(
-            cancellation_details.reason))
+        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
         if cancellation_details.reason == speechsdk.CancellationReason.Error:
             if cancellation_details.error_details:
-                print("Error details: {}".format(
-                    cancellation_details.error_details))
+                print("Error details: {}".format(cancellation_details.error_details))
                 print("Did you set the speech resource key and region values?")
 
-    print("Callback URL: " + audio_callback_path)
+    print("Callback URL: "+ audio_callback_path)
     json_summary = jsonify(callback)
     response = make_response(json_summary,201)
     return response
@@ -119,10 +124,10 @@ def record_speech(sid, text,audio_file_path):
     sid = content['sid']
     print(sid)
     text = content['text']
-    audio_file_path = request.values.get('audio_file_path')
+    audio_file_path=request.values.get('audio_file_path')
 
     # audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
-    audio_callback_path = audio_file_path  # audio_filePath + sid + "-def-file.wav";
+    audio_callback_path = audio_file_path #audio_filePath + sid + "-def-file.wav";
 
     callback = {"callback_url": audio_callback_path}
     data_update = NameSpeech(
@@ -146,6 +151,7 @@ def view_all_profiles():
 
 @app.route("/search/profiles/<text>", methods=["GET"])
 def search_profile(text):
+
     if request.method == "GET":
         try:
             #item = NameSpeech.query.filter_by(user_id=text).first_or_404()
@@ -165,10 +171,21 @@ def search_profile(text):
         return {"message": "Request method not implemented"}
 
 
+@app.route("/download/audio", methods=["GET"])
+def download_audio():
+    print("File Path-> "+request.args.get('q'))
+    encoded_b64=request.args.get('q');
+    base64_bytes = encoded_b64.encode("ascii")
+    sample_string_bytes = base64.b64decode(base64_bytes)
+    path = sample_string_bytes.decode("ascii")
+    print("Decode Path-> " + path)
+    return send_file(path, as_attachment=True)
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     print('Starting speech api service..')
-    app.run(host="0.0.0.0", port=8080, debug=True)
-    # serve(app)
-
+    if os.path.exists(audio_filePath):
+        app.run(host="0.0.0.0", port=8080, debug=True)
+    else:
+        print("The audio file path "+audio_filePath +" does not exist. Change the config path or create the same structure.")
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
