@@ -30,7 +30,7 @@ class NameSpeech(db.Model):
         self.custom_voice_path= custVoicePath
 
     def __repr__(self):
-        return f"<Item {self.userID}>"
+        return {"sid": self.user_id, "firstName": self.first_name, "lastName": self.last_name,"shortName":self.short_name,"voicePath":self.voice_path,"custom_voice_path":self.custom_voice_path,"created_time":self.created_timestamp}
 
     @property
     def serialize(self):

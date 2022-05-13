@@ -5,18 +5,15 @@
 import base64
 
 import azure.cognitiveservices.speech as speechsdk
-from flask import g
-#from flask import request,make_response,Flask,jsonify,appcontext_tearing_down,request_started
-import psycopg2
-import asyncio
-#from sqlalchemy import create_engine
+
+
 import pandas
 from flask_sqlalchemy import SQLAlchemy
 from models import NameSpeech
 from config import *
-from models import Base
+
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+
 import datetime
 from sqlalchemy.sql import func
 from sqlalchemy import or_
@@ -27,6 +24,9 @@ import traceback
 import socket
 from flask import send_file
 import os
+
+import json
+from flask import abort, Response
 
 #DB_URL="host=20.127.242.100 port=5433 dbname=yugabyte user=yugabyte password=Hackathon22!"
 #insert_sql= "INSERT INTO name_pronunciation_details (user_id, first_name, last_name, short_name,voice_path,created_timestamp) VALUES (%s, %s, %s, %s,%s,CURRENT_TIMESTAMP)";
@@ -39,6 +39,7 @@ from sqlalchemy import MetaData
 
 #Base.metadata.create_all(engine_nf)
 
+app.config['UPLOAD_FOLDER'] = audio_filePath
 
 def audio_path(file_name):
     full_path= audio_filePath+file_name
@@ -92,12 +93,12 @@ def default_speech():#sid, text, lang='en-US', gender='M'
             shortName=s_name,
             voicePath=audio_path(file_name),
             created=func.now(),
-            custVoicePath=audio_path(file_name),
+            custVoicePath='',
         )
 
         db.session.add(data_insert)
         db.session.commit()
-        callback = {"result": 'success', "callback_url": audio_path(file_name), "sid":sid, "firstName": f_name, "lastName": l_name, "shortName":s_name, "custVoicePath":audio_path(file_name)}
+        callback = {"result": 'success', "callback_url": audio_path(file_name), "sid":sid, "firstName": f_name, "lastName": l_name, "shortName":s_name, "custVoicePath":''}
         print('Saved to DB')
     elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
 
@@ -117,24 +118,36 @@ def default_speech():#sid, text, lang='en-US', gender='M'
     response = make_response(json_summary,201)
     return response
 
-@app.route('/speech/update',methods=['POST'])
-def record_speech(sid, text,audio_file_path):
+@app.route('/speech/update',methods=['PUT'])
+def record_speech():
     # Add validation
-    content = request.get_json()
-    sid = content['sid']
+
+    sid = request.args.get('sid')
     print(sid)
-    text = content['text']
-    audio_file_path=request.values.get('audio_file_path')
 
-    # audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
-    audio_callback_path = audio_file_path #audio_filePath + sid + "-def-file.wav";
+    fileitem = request.files['File']
+    custom_path = fileitem.filename
+    # check if the file has been uploaded
+    if fileitem.filename:
+        # strip the leading path from the file name
+        fileitem.save(custom_path)
 
-    callback = {"callback_url": audio_callback_path}
-    data_update = NameSpeech(
-        userID=sid,
-        voicePath=audio_callback_path,
-        created=func.now(),
-    )
+    record = NameSpeech.query.filter_by(user_id=sid).first()
+
+    if not record:
+        error_message = json.dumps({'error': f"Sid {sid} not found"})
+        abort(Response(error_message, 201))
+
+    print(record.user_id)
+
+    #record.custVoicePath = audio_path(custom_path)
+    setattr(record, 'custom_voice_path', audio_path(custom_path))
+
+    db.session.commit()
+
+    callback = {"result": 'success', "callback_url": record.voice_path, "sid": record.user_id, "firstName": record.first_name,
+                "lastName": record.last_name, "shortName": record.short_name, "custVoicePath": audio_path(custom_path)}
+
     json_summary = jsonify(callback)
     response = make_response(json_summary, 201)
     return response
