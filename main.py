@@ -45,6 +45,7 @@ audio_filePath = '/home/site/wwwroot/' if platform.system() != 'Windows' else 'D
 
 app.config['UPLOAD_FOLDER'] = audio_filePath
 default_port=8000
+azure_host="https://checkops.azurewebsites.net"
 
 print(audio_filePath)
 print(socket.gethostname())
@@ -59,11 +60,14 @@ def audio_path(file_name):
     sample_string_bytes = full_path.encode("ascii")
     base64_bytes = base64.b64encode(sample_string_bytes)
     base64_string = base64_bytes.decode("ascii")
-    return "http://"+socket.gethostname()+":"+default_port+"/download/audio?q="+base64_string;
+    get_host_port = "http://"+socket.gethostname() + ":" + str(default_port) if platform.system() == 'Windows' else azure_host
+
+    return get_host_port+"/download/audio?q="+base64_string;
 
 @app.route('/speech/create',methods=['POST'])
 def default_speech():#sid, text, lang='en-US', gender='M'
     #Add validation
+    print('Adding new...')
     content= request.get_json()
     sid = content['sid']
     f_name = content['firstName']
