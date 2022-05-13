@@ -44,6 +44,7 @@ from sqlalchemy import MetaData
 audio_filePath = '/home/site/wwwroot/' if platform.system() != 'Windows' else 'D:/Sujit/hackathon/'
 
 app.config['UPLOAD_FOLDER'] = audio_filePath
+default_port=8000
 
 @app.route('/ping')
 def index():
@@ -55,7 +56,7 @@ def audio_path(file_name):
     sample_string_bytes = full_path.encode("ascii")
     base64_bytes = base64.b64encode(sample_string_bytes)
     base64_string = base64_bytes.decode("ascii")
-    return "http://"+socket.gethostname()+":8080/download/audio?q="+base64_string;
+    return "http://"+socket.gethostname()+":"+default_port+"/download/audio?q="+base64_string;
 
 @app.route('/speech/create',methods=['POST'])
 def default_speech():#sid, text, lang='en-US', gender='M'
@@ -206,7 +207,7 @@ def download_audio():
 if __name__ == '__main__':
     print('Starting speech api service..')
     if os.path.exists(audio_filePath):
-        app.run(host="0.0.0.0", port=8080, debug=True)
+        app.run(host="0.0.0.0", port=default_port, debug=True)
     else:
         print("The audio file path "+audio_filePath +" does not exist. Change the config path or create the same structure.")
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
