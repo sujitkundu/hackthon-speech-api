@@ -9,7 +9,7 @@ from flask import *
 
 subscription_key = 'c8e3d272c8a14b4a9b59c3fe18257c89'
 default_region = 'eastus'
-audio_filePath = 'D:/Sujit/hackathon/'
+audio_filePath = 'C:/Users/Aditya Mangla/Desktop/'
 app = Flask(__name__)
 
 
@@ -21,7 +21,7 @@ def print_hi(name):
 @app.route('/speech/default', methods=['POST'])
 def default_speech():  # sid, text, lang='en-US', gender='M'
     # Add validation
-    content = request.get_json(silent=True)
+    content = request.json
     sid = content['sid']
     print(sid)
     text = content['text']
