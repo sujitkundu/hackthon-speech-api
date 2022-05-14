@@ -27,9 +27,12 @@ import datetime
 from sqlalchemy.sql import func
 from sqlalchemy import or_
 import logging
+
+from src.phonetics import get_phonetic
+
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
+import src.phonetics
 
 #DB_URL="host=20.127.242.100 port=5433 dbname=yugabyte user=yugabyte password=Hackathon22!"
 #insert_sql= "INSERT INTO name_pronunciation_details (user_id, first_name, last_name, short_name,voice_path,created_timestamp) VALUES (%s, %s, %s, %s,%s,CURRENT_TIMESTAMP)";
@@ -108,6 +111,7 @@ def default_speech_save_update():  # sid, text, lang='en-US', gender='M'
     callback = {"result": '', "callback_url": ''}
     if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
         print("Speech synthesized for text [{}]".format(text))
+        phonetic_txt=get_phonetic(text)
 
         data_insert = NameSpeech(
             userID=sid,
@@ -117,20 +121,25 @@ def default_speech_save_update():  # sid, text, lang='en-US', gender='M'
             voicePath=audio_path(file_name),
             created=func.now(),
             custVoicePath='',
-            phonetic='',
+            phonetic=phonetic_txt,
         )
         record = NameSpeech.query.filter_by(user_id=sid).first()
         if not record:
             db.session.add(data_insert)
             db.session.commit()
             callback = {"result": 'success', "callback_url": audio_path(
-                file_name), "sid": sid, "firstName": f_name, "lastName": l_name, "shortName": s_name, "custVoicePath": '',"phonetic":''}
+                file_name), "sid": sid, "firstName": f_name, "lastName": l_name, "shortName": s_name, "custVoicePath": '',"phonetic":phonetic_txt}
             print('Saved to DB')
         else:
+            #User opting out custom speech and switching to default. provision to update other data. Refer update api for updating custom audio
+            setattr(record, 'first_name', f_name)
+            setattr(record, 'last_name', l_name)
+            setattr(record, 'short_name', s_name)
             setattr(record, 'voice_path', audio_path(file_name))
+            setattr(record, 'phonetic', phonetic_txt)
             db.session.commit()
             callback = {"result": 'success', "callback_url": audio_path(file_name), "sid": sid, "firstName": f_name,
-                        "lastName": l_name, "shortName": s_name, "custVoicePath": '',"phonetic":''}
+                        "lastName": l_name, "shortName": s_name, "custVoicePath": '',"phonetic":phonetic_txt}
             print('Updated to DB')
     elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
 
