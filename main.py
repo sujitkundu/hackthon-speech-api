@@ -65,7 +65,7 @@ def audio_path(file_name):
     return get_host_port+"/download/audio?q="+base64_string;
 
 @app.route('/speech/create',methods=['POST'])
-def default_speech():#sid, text, lang='en-US', gender='M'
+def default_speech_save_update():#sid, text, lang='en-US', gender='M'
     #Add validation
     print('Adding new...')
     content= request.get_json()
@@ -111,11 +111,18 @@ def default_speech():#sid, text, lang='en-US', gender='M'
             created=func.now(),
             custVoicePath='',
         )
-
-        db.session.add(data_insert)
-        db.session.commit()
-        callback = {"result": 'success', "callback_url": audio_path(file_name), "sid":sid, "firstName": f_name, "lastName": l_name, "shortName":s_name, "custVoicePath":''}
-        print('Saved to DB')
+        record = NameSpeech.query.filter_by(user_id=sid).first()
+        if not record:
+            db.session.add(data_insert)
+            db.session.commit()
+            callback = {"result": 'success', "callback_url": audio_path(file_name), "sid":sid, "firstName": f_name, "lastName": l_name, "shortName":s_name, "custVoicePath":''}
+            print('Saved to DB')
+        else:
+            setattr(record, 'voice_path', audio_path(file_name))
+            db.session.commit()
+            callback = {"result": 'success', "callback_url": audio_path(file_name), "sid": sid, "firstName": f_name,
+                        "lastName": l_name, "shortName": s_name, "custVoicePath": ''}
+            print('Updated to DB')
     elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
 
         cancellation_details = speech_synthesis_result.cancellation_details
@@ -134,6 +141,7 @@ def default_speech():#sid, text, lang='en-US', gender='M'
     response = make_response(json_summary,201)
     return response
 
+
 @app.route('/speech/update',methods=['PUT'])
 def record_speech():
     # Add validation
@@ -141,28 +149,31 @@ def record_speech():
     sid = request.args.get('sid')
     print(sid)
 
-    fileitem = request.files['File']
-    custom_path = fileitem.filename
-    # check if the file has been uploaded
-    if fileitem.filename:
-        # strip the leading path from the file name
-        fileitem.save(custom_path)
-
     record = NameSpeech.query.filter_by(user_id=sid).first()
-
     if not record:
         error_message = json.dumps({'error': f"Sid {sid} not found"})
         abort(Response(error_message, 201))
-
     print(record.user_id)
-
-    #record.custVoicePath = audio_path(custom_path)
-    setattr(record, 'custom_voice_path', audio_path(custom_path))
+    # check if the file has been uploaded
+    if request.files.get('File', None):
+        fileitem = request.files['File']
+        # strip the leading path from the file name
+        custom_path = fileitem.filename
+        fileitem.save(custom_path)
+        setattr(record, 'custom_voice_path', audio_path(custom_path))
+        callback = {"result": 'success', "callback_url": record.voice_path, "sid": record.user_id,
+                    "firstName": record.first_name,
+                    "lastName": record.last_name, "shortName": record.short_name,
+                    "custVoicePath": audio_path(custom_path)}
+    else:
+        # Reset custom voice to empty
+        setattr(record, 'custom_voice_path', '')
+        callback = {"result": 'success', "callback_url": record.voice_path, "sid": record.user_id,
+                    "firstName": record.first_name,
+                    "lastName": record.last_name, "shortName": record.short_name,
+                    "custVoicePath": ''}
 
     db.session.commit()
-
-    callback = {"result": 'success', "callback_url": record.voice_path, "sid": record.user_id, "firstName": record.first_name,
-                "lastName": record.last_name, "shortName": record.short_name, "custVoicePath": audio_path(custom_path)}
 
     json_summary = jsonify(callback)
     response = make_response(json_summary, 201)
