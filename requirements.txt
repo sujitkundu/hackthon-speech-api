@@ -5,4 +5,5 @@ flask_sqlalchemy
 pandas
 flask-cors
 gunicorn
+eng_to_ipa
 
