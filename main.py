@@ -117,19 +117,20 @@ def default_speech_save_update():  # sid, text, lang='en-US', gender='M'
             voicePath=audio_path(file_name),
             created=func.now(),
             custVoicePath='',
+            phonetic='',
         )
         record = NameSpeech.query.filter_by(user_id=sid).first()
         if not record:
             db.session.add(data_insert)
             db.session.commit()
             callback = {"result": 'success', "callback_url": audio_path(
-                file_name), "sid": sid, "firstName": f_name, "lastName": l_name, "shortName": s_name, "custVoicePath": ''}
+                file_name), "sid": sid, "firstName": f_name, "lastName": l_name, "shortName": s_name, "custVoicePath": '',"phonetic":''}
             print('Saved to DB')
         else:
             setattr(record, 'voice_path', audio_path(file_name))
             db.session.commit()
             callback = {"result": 'success', "callback_url": audio_path(file_name), "sid": sid, "firstName": f_name,
-                        "lastName": l_name, "shortName": s_name, "custVoicePath": ''}
+                        "lastName": l_name, "shortName": s_name, "custVoicePath": '',"phonetic":''}
             print('Updated to DB')
     elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
 
@@ -174,14 +175,14 @@ def record_speech():
         callback = {"result": 'success', "callback_url": record.voice_path, "sid": record.user_id,
                     "firstName": record.first_name,
                     "lastName": record.last_name, "shortName": record.short_name,
-                    "custVoicePath": audio_path(custom_path)}
+                    "custVoicePath": audio_path(custom_path),"phonetic":record.phonetic}
     else:
         # Reset custom voice to empty
         setattr(record, 'custom_voice_path', '')
         callback = {"result": 'success', "callback_url": record.voice_path, "sid": record.user_id,
                     "firstName": record.first_name,
                     "lastName": record.last_name, "shortName": record.short_name,
-                    "custVoicePath": ''}
+                    "custVoicePath": '',"phonetic":record.phonetic}
 
     db.session.commit()
 
