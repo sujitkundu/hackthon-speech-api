@@ -160,10 +160,13 @@ def record_speech():
     logging.info(record.user_id)
     # check if the file has been uploaded
     if request.files.get('File', None):
+
         fileitem = request.files['File']
+
         # strip the leading path from the file name
         custom_path = fileitem.filename
-        fileitem.save(custom_path)
+        fileitem.save(audio_filePath+custom_path)
+        print("Got the file saved: " + custom_path)
         setattr(record, 'custom_voice_path', audio_path(custom_path))
         callback = {"result": 'success', "callback_url": record.voice_path, "sid": record.user_id,
                     "firstName": record.first_name,
