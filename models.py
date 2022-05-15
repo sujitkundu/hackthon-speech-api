@@ -5,10 +5,11 @@ import datetime
 from config import db
 Base = declarative_base()
 
-class NameSpeech(db.Model):
-    """
+"""
     Defines the name_pronunciation_details model
-    """
+"""
+class NameSpeech(db.Model):
+
 
     __tablename__ = "name_pronunciation_details"
 
@@ -37,7 +38,7 @@ class NameSpeech(db.Model):
     @property
     def serialize(self):
         """
-        Return item in serializeable format
+        Return name speech in serializeable format
         """
         return {"sid": self.user_id, "firstName": self.first_name, "lastName": self.last_name,"shortName":self.short_name,"voicePath":self.voice_path,"custom_voice_path":self.custom_voice_path,"created_time":self.created_timestamp,"phonetic":self.phonetic}
 
