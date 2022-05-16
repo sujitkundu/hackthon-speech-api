@@ -16,7 +16,7 @@ from src.phonetics import get_phonetic
 
 logging.basicConfig(level=logging.INFO,
                     format=f'%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s')
-audio_filePath = '/home/site/wwwroot/' if platform.system() != 'Windows' else 'D:/Sujit/hackathon/'
+audio_filePath = '/home/site/wwwroot/' if platform.system() != 'Windows' else '/test/'
 app.config['UPLOAD_FOLDER'] = audio_filePath
 default_port = 8000
 azure_host = "https://checkops.azurewebsites.net"
