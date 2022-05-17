@@ -1,0 +1,3 @@
+https://github.com/awamay/Name-pronunciation-react-ui/tree/develop
+
+https://github.com/sujitkundu/hackthon-speech-api
